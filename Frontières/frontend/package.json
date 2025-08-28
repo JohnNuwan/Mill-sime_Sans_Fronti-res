@@ -1,0 +1,18 @@
+{
+  "name": "millesime-sans-frontieres-frontend",
+  "version": "1.0.0",
+  "description": "Frontend Nuxt.js pour Millésime Sans Frontières",
+  "private": true,
+  "scripts": {
+    "build": "echo 'Build placeholder'",
+    "start": "echo 'Frontend placeholder - Backend ready to use'",
+    "dev": "echo 'Development mode placeholder'"
+  },
+  "dependencies": {
+    "nuxt": "^3.0.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
