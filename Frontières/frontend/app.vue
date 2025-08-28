@@ -14,6 +14,8 @@
 </script>
 
 <style>
+@import './assets/responsive.css';
+
 /* Global styles */
 * {
   margin: 0;

@@ -421,6 +421,10 @@ onMounted(() => {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .container {
+    padding: 0 1rem;
+  }
+  
   .hero {
     height: 70vh;
     min-height: 500px;
@@ -428,15 +432,20 @@ onMounted(() => {
 
   .hero__title {
     font-size: 2.5rem;
+    line-height: 1.2;
+    margin-bottom: 1rem;
   }
 
   .hero__subtitle {
     font-size: 1.125rem;
+    line-height: 1.5;
+    margin-bottom: 2rem;
   }
 
   .hero__actions {
     flex-direction: column;
     align-items: center;
+    gap: 1rem;
   }
 
   .featured-grid {
@@ -482,16 +491,27 @@ onMounted(() => {
 }
 
 @media (max-width: 480px) {
+  .container {
+    padding: 0 0.75rem;
+  }
+  
   .hero {
     height: 60vh;
     min-height: 400px;
   }
 
   .hero__title {
-    font-size: 2rem;
+    font-size: 1.75rem;
+    line-height: 1.3;
   }
 
   .hero__subtitle {
+    font-size: 1rem;
+    line-height: 1.4;
+  }
+
+  .hero__actions .btn {
+    padding: 0.875rem 1.5rem;
     font-size: 1rem;
   }
 
@@ -505,6 +525,10 @@ onMounted(() => {
 
   .testimonial-card {
     padding: var(--spacing-xl);
+  }
+  
+  .cta-title {
+    font-size: 1.75rem;
   }
 }
 

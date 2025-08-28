@@ -457,12 +457,18 @@ definePageMeta({
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .barrels {
+    padding: 1rem;
+  }
+  
   .hero__title {
     font-size: 2.5rem;
+    line-height: 1.2;
   }
 
   .hero__subtitle {
     font-size: 1.125rem;
+    line-height: 1.5;
   }
 
   .filters__content {
@@ -477,6 +483,45 @@ definePageMeta({
 
   .cta__title {
     font-size: 2rem;
+  }
+  
+  .cta {
+    padding: 3rem 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .barrels {
+    padding: 0.75rem;
+  }
+  
+  .hero__title {
+    font-size: 2rem;
+  }
+  
+  .hero__subtitle {
+    font-size: 1rem;
+  }
+  
+  .filters__content {
+    gap: 1rem;
+  }
+  
+  .barrels-grid__content {
+    gap: 1.5rem;
+  }
+  
+  .cta__title {
+    font-size: 1.75rem;
+  }
+  
+  .cta__description {
+    font-size: 1rem;
+  }
+  
+  .cta__button {
+    padding: 0.875rem 1.5rem;
+    font-size: 1rem;
   }
 }
 </style>

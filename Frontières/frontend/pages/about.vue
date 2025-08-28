@@ -554,12 +554,18 @@ definePageMeta({
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .about {
+    padding: 1rem;
+  }
+  
   .hero__title {
     font-size: 2.5rem;
+    line-height: 1.2;
   }
   
   .hero__subtitle {
     font-size: 1.125rem;
+    line-height: 1.5;
   }
   
   .mission__content {
@@ -575,6 +581,16 @@ definePageMeta({
     font-size: 2rem;
   }
   
+  .values__grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  .team__grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
   .contact-cta__buttons {
     flex-direction: column;
     align-items: center;
@@ -588,6 +604,41 @@ definePageMeta({
   .timeline__year {
     margin-right: 0;
     margin-bottom: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .about {
+    padding: 0.75rem;
+  }
+  
+  .hero__title {
+    font-size: 2rem;
+  }
+  
+  .hero__subtitle {
+    font-size: 1rem;
+  }
+  
+  .mission__title,
+  .values__title,
+  .history__title,
+  .team__title,
+  .contact-cta__title {
+    font-size: 1.75rem;
+  }
+  
+  .mission__image {
+    height: 300px;
+  }
+  
+  .value-card {
+    padding: 1.5rem;
+  }
+  
+  .contact-cta__button {
+    padding: 0.875rem 1.5rem;
+    font-size: 1rem;
   }
 }
 </style>

@@ -1,7 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  // Mode de développement
-  devtools: { enabled: true },
+  // Mode de développement - désactivé pour améliorer les performances
+  devtools: { enabled: false },
   
   // Modules
   modules: [
@@ -16,7 +16,7 @@ export default defineNuxtConfig({
     configPath: 'tailwind.config.ts',
     exposeConfig: false,
     injectPosition: 0,
-    viewer: true,
+    viewer: false, // Désactivé pour améliorer les performances
   },
 
   // Configuration Pinia
@@ -24,19 +24,17 @@ export default defineNuxtConfig({
     autoImports: ['defineStore', 'acceptHMRUpdate']
   },
 
-
-
   // Configuration de l'application
   app: {
     head: {
-      title: 'Millésime Sans Frontières - Fûts de Vin Premium',
+      title: 'Millésime Sans Frontières - Premium Wine Barrels',
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { 
           hid: 'description', 
           name: 'description', 
-          content: 'Découvrez notre collection exclusive de fûts de vin premium du monde entier. Qualité professionnelle pour vignerons, brasseurs et passionnés.' 
+          content: 'Discover our exclusive collection of premium wine barrels from around the world. Professional quality for winemakers, brewers and enthusiasts.' 
         },
         { name: 'format-detection', content: 'telephone=no' }
       ],
@@ -59,7 +57,7 @@ export default defineNuxtConfig({
     }
   },
 
-  // Configuration CSS
+  // Configuration CSS - optimisée pour les performances
   css: [
     '~/assets/css/main.css'
   ],
@@ -100,35 +98,32 @@ export default defineNuxtConfig({
     dirs: ['composables/**', 'utils/**']
   },
 
-  // Configuration des alias
-  alias: {
-    '@': '~/',
-    '@components': '~/components',
-    '@pages': '~/pages',
-    '@assets': '~/assets',
-    '@stores': '~/stores',
-    '@utils': '~/utils',
-    '@types': '~/types'
-  },
-
-  // Configuration des types TypeScript
+  // Configuration TypeScript
   typescript: {
-    strict: true,
-    typeCheck: false
+    typeCheck: false, // Désactivé pour améliorer les performances
+    strict: false
   },
 
-  // Configuration PostCSS
-  postcss: {
-    plugins: {
-      tailwindcss: {},
-      autoprefixer: {},
+  // Configuration Nitro pour optimiser le serveur
+  nitro: {
+    compressPublicAssets: true,
+    minify: true
+  },
+
+  // Configuration Vite pour optimiser le build
+  vite: {
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['vue', 'vue-router'],
+            ui: ['@headlessui/vue', '@heroicons/vue']
+          }
+        }
+      }
     },
-  },
-
-  // Configuration des hooks
-  hooks: {
-    'pages:extend'(pages) {
-      // Ajouter des métadonnées aux pages si nécessaire
+    optimizeDeps: {
+      include: ['vue', 'vue-router', '@pinia/nuxt']
     }
   }
 })

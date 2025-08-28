@@ -1,56 +1,49 @@
-# Dockerfile pour le frontend Nuxt.js - Millésime Sans Frontières
-FROM node:20-alpine AS base
+# Build stage
+FROM node:20-alpine AS builder
 
-# Installer les dépendances système nécessaires
-RUN apk add --no-cache libc6-compat
-
-# Définir le répertoire de travail
+# Set working directory
 WORKDIR /app
 
-# Copier les fichiers de dépendances
+# Copy package files for better caching
 COPY package*.json ./
-COPY nuxt.config.ts ./
-COPY tailwind.config.ts ./
 
-# Installer les dépendances
-RUN npm install && npm cache clean --force
+# Install dependencies with cache mount for better performance
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --only=production
 
-# Copier le code source
+# Copy source code
 COPY . .
 
-# Construire l'application
+# Build the application
 RUN npm run build
 
-# Étape de production
+# Production stage
 FROM node:20-alpine AS production
 
-# Créer un utilisateur non-root
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nuxtjs
+# Install dumb-init for better process management
+RUN apk add --no-cache dumb-init
 
-# Installer les dépendances système
-RUN apk add --no-cache libc6-compat
+# Create app user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nuxt -u 1001
 
-# Définir le répertoire de travail
+# Set working directory
 WORKDIR /app
 
-# Copier les fichiers de dépendances et l'application construite
-COPY --from=base --chown=nuxtjs:nodejs /app/package*.json ./
-COPY --from=base --chown=nuxtjs:nodejs /app/node_modules ./node_modules
-COPY --from=base --chown=nuxtjs:nodejs /app/.nuxt ./.nuxt
-COPY --from=base --chown=nuxtjs:nodejs /app/.output ./.output
-COPY --from=base --chown=nuxtjs:nodejs /app/public ./public
+# Copy built application
+COPY --from=builder --chown=nuxt:nodejs /app/.output ./.output
+COPY --from=builder --chown=nuxt:nodejs /app/package*.json ./
 
-# Changer vers l'utilisateur non-root
-USER nuxtjs
+# Switch to non-root user
+USER nuxt
 
-# Exposer le port
+# Expose port
 EXPOSE 3000
 
-# Variables d'environnement
-ENV NODE_ENV=production
-ENV HOST=0.0.0.0
-ENV PORT=3000
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })" || exit 1
 
-# Commande de démarrage
-CMD ["npm", "run", "dev"]
+# Start the application with dumb-init
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", ".output/server/index.mjs"]

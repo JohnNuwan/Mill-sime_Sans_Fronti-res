@@ -88,6 +88,11 @@
                 Contact
               </NuxtLink>
             </li>
+            <li class="mobile-nav__item">
+              <NuxtLink to="/login" class="mobile-nav__link" @click="closeMobileMenu">
+                Login
+              </NuxtLink>
+            </li>
           </ul>
         </nav>
       </div>
@@ -117,7 +122,7 @@ const closeMobileMenu = () => {
   width: 100%;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--color-cream-200);
+  border-bottom: 1px solid #e7e5e4;
   z-index: 1000;
   transition: all 0.3s ease;
 }
@@ -140,7 +145,7 @@ const closeMobileMenu = () => {
 .logo__brand {
   font-size: 1.75rem;
   font-weight: 700;
-  color: var(--color-oak-brown-900);
+  color: #1c1917;
   font-family: 'Playfair Display', serif;
   line-height: 1;
 }
@@ -148,7 +153,7 @@ const closeMobileMenu = () => {
 .logo__tagline {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-wine-red-600);
+  color: #dc2626;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   line-height: 1;
@@ -165,7 +170,7 @@ const closeMobileMenu = () => {
 
 .nav__link {
   text-decoration: none;
-  color: var(--color-oak-brown-700);
+  color: #57534e;
   font-weight: 500;
   font-size: 1rem;
   transition: all 0.3s ease;
@@ -173,11 +178,11 @@ const closeMobileMenu = () => {
 }
 
 .nav__link:hover {
-  color: var(--color-wine-red-600);
+  color: #dc2626;
 }
 
 .nav__link--active {
-  color: var(--color-wine-red-600);
+  color: #dc2626;
 }
 
 .nav__link--active::after {
@@ -187,7 +192,7 @@ const closeMobileMenu = () => {
   left: 0;
   width: 100%;
   height: 2px;
-  background: var(--color-wine-red-600);
+  background: #dc2626;
   border-radius: 1px;
 }
 
@@ -207,21 +212,31 @@ const closeMobileMenu = () => {
   cursor: pointer;
   padding: 0.5rem;
   gap: 0.25rem;
+  min-height: 44px;
+  min-width: 44px;
+  align-items: center;
+  justify-content: center;
 }
 
 .mobile-menu-toggle__line {
   width: 24px;
   height: 2px;
-  background: var(--color-oak-brown-800);
+  background: #44403c;
   transition: all 0.3s ease;
 }
 
 /* Mobile Menu */
 .mobile-menu {
   display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
   background: white;
-  border-top: 1px solid var(--color-cream-200);
+  border-top: 1px solid #e7e5e4;
   padding: 1rem 0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
   transform: translateY(-100%);
   opacity: 0;
   transition: all 0.3s ease;
@@ -238,24 +253,41 @@ const closeMobileMenu = () => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0;
+}
+
+.mobile-nav__item {
+  border-bottom: 1px solid #f3f2f0;
+}
+
+.mobile-nav__item:last-child {
+  border-bottom: none;
 }
 
 .mobile-nav__link {
   display: block;
-  padding: 0.75rem 0;
+  padding: 1rem 2rem;
   text-decoration: none;
-  color: var(--color-oak-brown-700);
+  color: #57534e;
   font-weight: 500;
+  font-size: 1.125rem;
   transition: all 0.3s ease;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
 }
 
 .mobile-nav__link:hover {
-  color: var(--color-wine-red-600);
+  color: #dc2626;
+  background-color: #f9f8f6;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .header__content {
+    padding: 0.75rem 1rem;
+  }
+  
   .nav {
     display: none;
   }
@@ -273,11 +305,30 @@ const closeMobileMenu = () => {
   }
   
   .logo__brand {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
   }
   
   .logo__tagline {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .header__content {
+    padding: 0.5rem 0.75rem;
+  }
+  
+  .logo__brand {
+    font-size: 1.125rem;
+  }
+  
+  .logo__tagline {
+    font-size: 0.6rem;
+  }
+  
+  .mobile-nav__link {
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
   }
 }
 
@@ -294,17 +345,28 @@ const closeMobileMenu = () => {
   transition: all 0.3s ease;
   cursor: pointer;
   border: none;
+  min-height: 44px;
 }
 
 .btn--outline {
   background: transparent;
-  color: var(--color-wine-red-600);
-  border: 2px solid var(--color-wine-red-600);
+  color: #dc2626;
+  border: 2px solid #dc2626;
 }
 
 .btn--outline:hover {
-  background: var(--color-wine-red-600);
+  background: #dc2626;
   color: white;
+  transform: translateY(-2px);
+}
+
+.btn--primary {
+  background: #dc2626;
+  color: white;
+}
+
+.btn--primary:hover {
+  background: #b91c1c;
   transform: translateY(-2px);
 }
 </style>
