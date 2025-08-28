@@ -47,7 +47,11 @@ def get_db():
 def init_db():
     """Initialisation de la base de données"""
     # Import des modèles pour qu'ils soient connus de SQLAlchemy
-    from app.models import user, barrel, order, quote, address
+    import app.models.user
+    import app.models.barrel
+    import app.models.order
+    import app.models.quote
+    import app.models.address
     
     # Création des tables
     Base.metadata.create_all(bind=engine)
@@ -63,7 +67,9 @@ def close_db():
 def create_tables():
     """Crée toutes les tables de la base de données"""
     # Import des modèles pour qu'ils soient connus de SQLAlchemy
-    from app.models import user, barrel, order, quote, address
+    import app.models.user
+    import app.models.quote
+    import app.models.address
     
     # Création des tables
     Base.metadata.create_all(bind=engine)

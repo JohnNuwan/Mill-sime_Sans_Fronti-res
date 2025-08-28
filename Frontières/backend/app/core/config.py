@@ -60,7 +60,6 @@ class Settings(BaseSettings):
 # Instance globale des paramètres
 settings = Settings()
 
-
 # Fonction pour obtenir les paramètres de base de données
 def get_database_url() -> str:
     """Retourne l'URL de la base de données"""
@@ -75,3 +74,4 @@ def get_redis_url() -> str:
     if os.getenv("REDIS_URL"):
         return os.getenv("REDIS_URL")
     return settings.REDIS_URL
+

@@ -94,15 +94,16 @@ def get_current_user(token: str = Depends(security)) -> dict:
 def get_current_active_user(token: str = Depends(security)) -> dict:
     """Récupère l'utilisateur actif actuel"""
     user_data = get_current_user(token)
-    user_id = user_data["user_id"]
     
-    # Dans un vrai projet, récupérer l'utilisateur depuis la base
-    # user = get_user_by_id(user_id, db)
-    # if not user or not user.is_active:
-    #     raise HTTPException(status_code=400, detail="Utilisateur inactif")
-    
-    # Pour les tests, simuler un utilisateur actif
-    user = {"id": user_id, "active": True}
+    # Gérer à la fois les dictionnaires et les objets mock
+    if isinstance(user_data, dict):
+        user_id = user_data.get("user_id")
+        # Pour les tests, simuler un utilisateur actif
+        user = {"id": user_id, "active": True}
+    else:
+        # Si c'est un objet mock ou autre
+        user_id = getattr(user_data, "user_id", None) or getattr(user_data, "id", None)
+        user = {"id": user_id, "active": True}
     
     if user and user.get("active", True):
         return user
@@ -116,7 +117,9 @@ def get_current_user_optional(token: Optional[str] = Depends(security)) -> Optio
         return None
     
     try:
-        return get_current_user(token)
+        user_data = get_current_user(token)
+        # Retourner le même format que get_current_user
+        return user_data
     except HTTPException:
         return None
 

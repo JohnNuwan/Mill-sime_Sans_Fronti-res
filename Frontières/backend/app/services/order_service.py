@@ -31,12 +31,12 @@ class OrderService:
         ).count()
         return f"ORD-{timestamp}-{count + 1:04d}"
 
-    def _calculate_order_amounts(self, items: List[Dict], discount_percentage: Decimal = Decimal("0"), tax_percentage: Decimal = Decimal("20")) -> Dict[str, Decimal]:
+    def _calculate_order_amounts(self, items: List[Dict], shipping_cost: Decimal = Decimal("0"), discount_percentage: Decimal = Decimal("0"), tax_percentage: Decimal = Decimal("20")) -> Dict[str, Decimal]:
         """Calcule les montants de la commande"""
         subtotal = sum(item['quantity'] * item['unit_price'] for item in items)
         discount_amount = subtotal * (discount_percentage / Decimal("100"))
         tax_amount = (subtotal - discount_amount) * (tax_percentage / Decimal("100"))
-        total = subtotal - discount_amount + tax_amount
+        total = subtotal - discount_amount + tax_amount + shipping_cost
         
         return {
             "subtotal": subtotal,

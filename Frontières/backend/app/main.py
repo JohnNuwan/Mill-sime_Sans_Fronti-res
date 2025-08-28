@@ -10,8 +10,7 @@ import uvicorn
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
-from app.core.database import engine
-from app.models import Base
+from app.core.database import engine, Base
 from app.api.v1.api import api_router
 
 

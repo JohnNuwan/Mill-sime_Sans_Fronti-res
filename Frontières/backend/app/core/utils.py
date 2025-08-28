@@ -140,8 +140,8 @@ def validate_postal_code(postal_code: str) -> bool:
     if re.match(r'^\d{5}$', postal_code):
         return True
     
-    # Format US (5 chiffres ou 5-4)
-    if re.match(r'^\d{5}(-\d{4})?$', postal_code):
+    # Format US (5 chiffres seulement, pas de tirets)
+    if re.match(r'^\d{5}$', postal_code):
         return True
     
     # Format canadien (A1B 2C3)

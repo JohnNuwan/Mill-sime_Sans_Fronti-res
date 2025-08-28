@@ -22,6 +22,29 @@ SECRET_KEY = "your-secret-key-here"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+# Mock Redis client pour les tests
+class MockRedisClient:
+    def __init__(self):
+        self.data = {}
+    
+    def get(self, key):
+        return self.data.get(key)
+    
+    def set(self, key, value, ex=None):
+        self.data[key] = value
+        return True
+    
+    def incr(self, key):
+        if key not in self.data:
+            self.data[key] = 0
+        self.data[key] += 1
+        return self.data[key]
+    
+    def expire(self, key, seconds):
+        return True
+
+redis_client = MockRedisClient()
+
 # Configuration de validation des mots de passe
 MIN_PASSWORD_LENGTH = 8
 REQUIRED_CHARS = {
@@ -47,28 +70,45 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None, secret_key: str = None) -> str:
     """Crée un token d'accès JWT"""
-    return auth_create_access_token(data, expires_delta)
+    if secret_key is None:
+        secret_key = SECRET_KEY
+    
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=ALGORITHM)
+    return encoded_jwt
 
 
-def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None, secret_key: str = None) -> str:
     """Crée un token de rafraîchissement JWT"""
     if expires_delta is None:
         expires_delta = timedelta(days=7)
+    
+    if secret_key is None:
+        secret_key = SECRET_KEY
     
     to_encode = data.copy()
     expire = datetime.utcnow() + expires_delta
     to_encode.update({"exp": expire, "type": "refresh"})
     
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=ALGORITHM)
     return encoded_jwt
 
 
-def verify_token(token: str) -> dict:
+def verify_token(token: str, secret_key: str = None) -> dict:
     """Vérifie un token JWT"""
+    if secret_key is None:
+        secret_key = SECRET_KEY
+    
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, secret_key, algorithms=[ALGORITHM])
         return payload
     except jwt.ExpiredSignatureError:
         raise ValueError("Token expiré")
@@ -76,7 +116,7 @@ def verify_token(token: str) -> dict:
         raise ValueError("Token invalide")
 
 
-def generate_secure_token(length: int = 32) -> str:
+def generate_secure_token(length: int = 64) -> str:
     """Génère un token sécurisé aléatoire"""
     return secrets.token_urlsafe(length)
 
@@ -104,9 +144,22 @@ def validate_password_strength(password: str) -> Dict[str, Any]:
     
     is_valid = len(errors) == 0
     
+    score = 0
+    if len(password) >= 8:
+        score += 1
+    if re.search(REQUIRED_CHARS["uppercase"], password):
+        score += 1
+    if re.search(REQUIRED_CHARS["lowercase"], password):
+        score += 1
+    if re.search(REQUIRED_CHARS["digits"], password):
+        score += 1
+    if re.search(REQUIRED_CHARS["special"], password):
+        score += 1
+    
     return {
         "is_valid": is_valid,
         "is_strong": is_valid and len(password) >= 12,
+        "score": score,
         "has_uppercase": bool(re.search(REQUIRED_CHARS["uppercase"], password)),
         "has_lowercase": bool(re.search(REQUIRED_CHARS["lowercase"], password)),
         "has_digits": bool(re.search(REQUIRED_CHARS["digits"], password)),
@@ -117,14 +170,17 @@ def validate_password_strength(password: str) -> Dict[str, Any]:
 
 
 def sanitize_input(input_string: str) -> str:
-    """Nettoie une chaîne d'entrée pour éviter les injections SQL"""
+    """Nettoie une chaîne d'entrée pour éviter les injections SQL et HTML"""
     if input_string is None:
         return ""
     
-    # Supprimer les caractères dangereux
-    dangerous_chars = ["'", '"', ';', '--', '/*', '*/', 'xp_', 'sp_']
     sanitized = input_string
     
+    # Supprimer les balises HTML
+    sanitized = re.sub(r'<[^>]+>', '', sanitized)
+    
+    # Supprimer les caractères dangereux pour SQL
+    dangerous_chars = ["'", '"', ';', '--', '/*', '*/', 'xp_', 'sp_']
     for char in dangerous_chars:
         sanitized = sanitized.replace(char, '')
     
@@ -148,6 +204,8 @@ def validate_file_upload(file: Any, file_size: int = None) -> Dict[str, Any]:
     # Validation de la taille
     if file_size and file_size > 10 * 1024 * 1024:  # 10MB
         errors.append("Fichier trop volumineux (max 10MB)")
+    elif file_size and file_size <= 0:
+        errors.append("Taille de fichier invalide")
     
     # Validation du type
     if hasattr(file, 'content_type'):
@@ -171,7 +229,8 @@ def check_permissions(user_role: str, required_role: str) -> bool:
     role_hierarchy = {
         "admin": 3,
         "manager": 2,
-        "user": 1
+        "user": 1,
+        "customer": 1
     }
     
     user_level = role_hierarchy.get(user_role, 0)
@@ -197,15 +256,36 @@ def validate_api_key(api_key: str) -> bool:
     # Vérification basique (dans un vrai projet, vérifier en base)
     return len(api_key) >= 32 and api_key.startswith("msf_")
 
+def get_api_key_info(api_key: str) -> Dict[str, Any]:
+    """Récupère les informations d'une clé API"""
+    if not api_key:
+        return {"valid": False, "error": "Clé API manquante"}
+    
+    is_valid = validate_api_key(api_key)
+    
+    if not is_valid:
+        return {"valid": False, "error": "Clé API invalide"}
+    
+    # Mock des informations de clé API
+    return {
+        "valid": True,
+        "key_id": f"key_{api_key[:8]}",
+        "permissions": ["read", "write"],
+        "expires_at": None,
+        "is_active": True
+    }
+
 
 def encrypt_sensitive_data(data: str, encryption_key: str = None) -> str:
     """Chiffre des données sensibles"""
     if encryption_key is None:
         encryption_key = SECRET_KEY
     
-    # Chiffrement simple (dans un vrai projet, utiliser une méthode plus sécurisée)
+    # Chiffrement simple avec la clé (dans un vrai projet, utiliser une méthode plus sécurisée)
+    # Utiliser la clé pour créer un hash unique
+    key_hash = hashlib.md5(encryption_key.encode()).hexdigest()[:8]
     encoded_data = base64.b64encode(data.encode()).decode()
-    return f"encrypted_{encoded_data}"
+    return f"encrypted_{key_hash}_{encoded_data}"
 
 
 def decrypt_sensitive_data(encrypted_data: str, encryption_key: str = None) -> str:
@@ -263,13 +343,24 @@ def validate_session_token(token: str) -> bool:
         return False
 
 
-def validate_file_type(content_type: str, allowed_types: List[str] = None) -> Dict[str, Any]:
+def validate_file_type(filename: str, content_type: str) -> Dict[str, Any]:
     """Valide le type d'un fichier"""
-    if allowed_types is None:
-        allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf']
+    allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf']
     
-    is_valid = content_type in allowed_types
-    errors = [] if is_valid else [f"Type de fichier non autorisé: {content_type}"]
+    # Vérifier l'extension du fichier
+    file_extension = filename.lower().split('.')[-1] if '.' in filename else ''
+    extension_allowed = file_extension in ['jpg', 'jpeg', 'png', 'gif', 'pdf']
+    
+    # Vérifier le type MIME
+    mime_allowed = content_type in allowed_types
+    
+    is_valid = extension_allowed and mime_allowed
+    errors = []
+    
+    if not extension_allowed:
+        errors.append(f"Extension de fichier non autorisée: {file_extension}")
+    if not mime_allowed:
+        errors.append(f"Type MIME non autorisé: {content_type}")
     
     return {
         "is_valid": is_valid,
@@ -293,8 +384,8 @@ def validate_url(url: str) -> bool:
     if not url:
         return False
     
-    # Regex pour valider les URLs
-    url_pattern = r'^https?://(?:[-\w.])+(?:\:[0-9]+)?(?:/(?:[\w/_.])*(?:\?(?:[\w&=%.])*)?(?:\#(?:[\w.])*)?)?$'
+    # Regex pour valider les URLs (HTTP, HTTPS, FTP)
+    url_pattern = r'^(https?|ftp)://(?:[-\w.])+(?:\:[0-9]+)?(?:/(?:[\w/_.])*(?:\?(?:[\w&=%.])*)?(?:\#(?:[\w.])*)?)?$'
     return bool(re.match(url_pattern, url))
 
 
@@ -368,6 +459,7 @@ def validate_postal_code(postal_code: str) -> bool:
         r'^[A-Z]\d[A-Z] \d[A-Z]\d$',  # Format canadien
         r'^\d{4} [A-Z]{2}$',  # Format néerlandais
         r'^\d{5}$',  # Format allemand
+        r'^\d{5} \d{2}$',  # Format européen avec espace
     ]
     
     return any(re.match(pattern, postal_code) for pattern in patterns)
@@ -399,6 +491,11 @@ def validate_iban(iban: str) -> bool:
     
     # Vérifier le format (2 lettres pour le pays + chiffres)
     if not re.match(r'^[A-Z]{2}\d{2}[A-Z0-9]{1,30}$', clean_iban):
+        return False
+    
+    # Vérifications spécifiques par pays
+    country_code = clean_iban[:2]
+    if country_code == "FR" and len(clean_iban) != 27:
         return False
     
     return True

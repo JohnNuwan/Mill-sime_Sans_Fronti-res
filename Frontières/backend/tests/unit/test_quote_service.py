@@ -42,59 +42,57 @@ class TestQuoteService:
         """Test de calcul des montants de devis"""
         # Arrange
         items = [
-            Mock(quantity=2, unit_price=Decimal("1400.00")),
-            Mock(quantity=1, unit_price=Decimal("1800.00"))
+            {"quantity": 2, "unit_price": Decimal("1400.00")},
+            {"quantity": 1, "unit_price": Decimal("1800.00")}
         ]
         shipping_cost = Decimal("50.00")
-        tax_rate = Decimal("20.00")
         discount_percentage = Decimal("5.00")
+        tax_percentage = Decimal("20.00")
         
         # Act
         result = self.quote_service._calculate_quote_amounts(
-            items, shipping_cost, tax_rate, discount_percentage
+            items, shipping_cost, discount_percentage, tax_percentage
         )
         
         # Assert
         assert result["subtotal"] == Decimal("4600.00")  # 2*1400 + 1*1800
         assert result["discount_amount"] == Decimal("230.00")  # 5% de 4600
         assert result["tax_amount"] == Decimal("874.00")  # 20% de (4600-230)
-        assert result["total_amount"] == Decimal("5294.00")  # 4600-230+874+50
+        assert result["total"] == Decimal("5294.00")  # 4600-230+874+50
 
     def test_calculate_quote_amounts_no_discount(self):
         """Test de calcul des montants sans remise"""
         # Arrange
-        items = [Mock(quantity=1, unit_price=Decimal("1000.00"))]
+        items = [{"quantity": 1, "unit_price": Decimal("1000.00")}]
         shipping_cost = Decimal("0.00")
-        tax_rate = Decimal("0.00")
         discount_percentage = Decimal("0.00")
+        tax_percentage = Decimal("0.00")
         
         # Act
         result = self.quote_service._calculate_quote_amounts(
-            items, shipping_cost, tax_rate, discount_percentage
+            items, shipping_cost, discount_percentage, tax_percentage
         )
         
         # Assert
         assert result["subtotal"] == Decimal("1000.00")
         assert result["discount_amount"] == Decimal("0.00")
         assert result["tax_amount"] == Decimal("0.00")
-        assert result["total_amount"] == Decimal("1000.00")
+        assert result["total"] == Decimal("1000.00")
 
     def test_validate_quote_items_success(self):
         """Test de validation des éléments de devis réussie"""
         # Arrange
         items = [
-            Mock(barrel_id="barrel1", quantity=5),
-            Mock(barrel_id="barrel2", quantity=3)
+            {"barrel_id": "barrel1", "quantity": 5},
+            {"barrel_id": "barrel2", "quantity": 3}
         ]
         
-        mock_barrels = {
-            "barrel1": Mock(stock_quantity=10),
-            "barrel2": Mock(stock_quantity=5)
-        }
+        # Mock pour le premier appel (barrel1)
+        mock_barrel1 = Mock(stock_quantity=10)
+        # Mock pour le deuxième appel (barrel2)
+        mock_barrel2 = Mock(stock_quantity=5)
         
-        self.mock_db.query.return_value.filter.return_value.first.side_effect = lambda: mock_barrels.get(
-            self.mock_db.query.return_value.filter.return_value.first.call_args[0][0].right.value
-        )
+        self.mock_db.query.return_value.filter.return_value.first.side_effect = [mock_barrel1, mock_barrel2]
         
         # Act
         result = self.quote_service._validate_quote_items(items)
@@ -106,7 +104,7 @@ class TestQuoteService:
         """Test de validation des éléments avec stock insuffisant"""
         # Arrange
         items = [
-            Mock(barrel_id="barrel1", quantity=15)  # Plus que le stock disponible
+            {"barrel_id": "barrel1", "quantity": 15}  # Plus que le stock disponible
         ]
         
         mock_barrel = Mock(stock_quantity=10)
@@ -123,7 +121,10 @@ class TestQuoteService:
         mock_quote = Mock(spec=Quote)
         mock_quote.id = quote_id
         
-        self.mock_db.query.return_value.filter.return_value.first.return_value = mock_quote
+        # Configurer la chaîne complète de mocks
+        mock_query = Mock()
+        mock_query.options.return_value.filter.return_value.first.return_value = mock_quote
+        self.mock_db.query.return_value = mock_query
         
         # Act
         result = self.quote_service.get_quote_by_id(quote_id)
@@ -136,7 +137,11 @@ class TestQuoteService:
         """Test de récupération de devis par ID non trouvé"""
         # Arrange
         quote_id = "nonexistent-quote-id"
-        self.mock_db.query.return_value.filter.return_value.first.return_value = None
+        
+        # Configurer la chaîne complète de mocks
+        mock_query = Mock()
+        mock_query.options.return_value.filter.return_value.first.return_value = None
+        self.mock_db.query.return_value = mock_query
         
         # Act & Assert
         with pytest.raises(NotFoundException):
@@ -146,8 +151,10 @@ class TestQuoteService:
         """Test de récupération de devis avec filtres"""
         # Arrange
         mock_quotes = [Mock(spec=Quote), Mock(spec=Quote)]
+        
+        # Configurer la chaîne complète de mocks
         mock_query = Mock()
-        mock_query.offset.return_value.limit.return_value.all.return_value = mock_quotes
+        mock_query.options.return_value.filter.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = mock_quotes
         mock_query.count.return_value = 2
         
         self.mock_db.query.return_value = mock_query
@@ -163,8 +170,10 @@ class TestQuoteService:
         """Test de récupération de devis sans filtres"""
         # Arrange
         mock_quotes = [Mock(spec=Quote)]
+        
+        # Configurer la chaîne complète de mocks
         mock_query = Mock()
-        mock_query.offset.return_value.limit.return_value.all.return_value = mock_quotes
+        mock_query.options.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = mock_quotes
         mock_query.count.return_value = 1
         
         self.mock_db.query.return_value = mock_query
@@ -181,13 +190,13 @@ class TestQuoteService:
         # Arrange
         quote_data = {
             "user_id": "test-user-id",
-            "title": "Devis de test",
-            "description": "Devis pour fûts de chêne",
+            "quote_number": "QUO-TEST-001",
+            "customer_notes": "Devis pour fûts de chêne",
             "valid_until": date.today() + timedelta(days=30),
             "terms_conditions": "Conditions standard",
-            "notes": "Devis de test",
+            "internal_notes": "Devis de test",
             "shipping_cost": Decimal("50.00"),
-            "tax_rate": Decimal("20.00"),
+            "tax_percentage": Decimal("20.00"),
             "discount_percentage": Decimal("5.00"),
             "items": [
                 {
@@ -209,6 +218,7 @@ class TestQuoteService:
         
         # Mock des validations
         with patch.object(self.quote_service, '_validate_quote_items') as mock_validate:
+            mock_validate.return_value = True
             with patch('app.services.quote_service.Quote') as mock_quote_class:
                 mock_quote_class.return_value = mock_quote
                 
@@ -248,21 +258,28 @@ class TestQuoteService:
             ]
         }
         
-        # Act & Assert
-        with pytest.raises(ValidationException):
-            self.quote_service.create_quote(quote_data)
+        # Mock de la validation des items pour éviter l'erreur de stock
+        with patch.object(self.quote_service, '_validate_quote_items') as mock_validate:
+            mock_validate.return_value = True
+            
+            # Act & Assert
+            with pytest.raises(ValidationException):
+                self.quote_service.create_quote(quote_data)
 
     def test_update_quote_success(self):
         """Test de mise à jour de devis réussie"""
         # Arrange
         quote_id = "test-quote-id"
-        update_data = {"title": "Nouveau titre"}
+        update_data = {"customer_notes": "Nouvelles notes"}
         
         mock_quote = Mock(spec=Quote)
         mock_quote.id = quote_id
-        mock_quote.title = "Ancien titre"
+        mock_quote.customer_notes = "Anciennes notes"
         
-        self.mock_db.query.return_value.filter.return_value.first.return_value = mock_quote
+        # Configurer la chaîne complète de mocks
+        mock_query = Mock()
+        mock_query.filter.return_value.first.return_value = mock_quote
+        self.mock_db.query.return_value = mock_query
         self.mock_db.commit.return_value = None
         
         # Act
@@ -270,16 +287,19 @@ class TestQuoteService:
         
         # Assert
         assert result == mock_quote
-        assert mock_quote.title == "Nouveau titre"
+        assert mock_quote.customer_notes == "Nouvelles notes"
         self.mock_db.commit.assert_called_once()
 
     def test_update_quote_not_found(self):
         """Test de mise à jour de devis non trouvé"""
         # Arrange
         quote_id = "nonexistent-quote-id"
-        update_data = {"title": "Nouveau titre"}
+        update_data = {"customer_notes": "Nouvelles notes"}
         
-        self.mock_db.query.return_value.filter.return_value.first.return_value = None
+        # Configurer la chaîne complète de mocks
+        mock_query = Mock()
+        mock_query.filter.return_value.first.return_value = None
+        self.mock_db.query.return_value = mock_query
         
         # Act & Assert
         with pytest.raises(NotFoundException):
@@ -295,7 +315,10 @@ class TestQuoteService:
         mock_quote.id = quote_id
         mock_quote.status = "draft"
         
-        self.mock_db.query.return_value.filter.return_value.first.return_value = mock_quote
+        # Configurer la chaîne complète de mocks
+        mock_query = Mock()
+        mock_query.filter.return_value.first.return_value = mock_quote
+        self.mock_db.query.return_value = mock_query
         self.mock_db.commit.return_value = None
         
         # Act
@@ -316,7 +339,10 @@ class TestQuoteService:
         mock_quote.id = quote_id
         mock_quote.status = "draft"
         
-        self.mock_db.query.return_value.filter.return_value.first.return_value = mock_quote
+        # Configurer la chaîne complète de mocks
+        mock_query = Mock()
+        mock_query.filter.return_value.first.return_value = mock_quote
+        self.mock_db.query.return_value = mock_query
         
         # Act & Assert
         with pytest.raises(BusinessLogicException):
@@ -330,7 +356,10 @@ class TestQuoteService:
         mock_quote.id = quote_id
         mock_quote.status = "draft"
         
-        self.mock_db.query.return_value.filter.return_value.first.return_value = mock_quote
+        # Configurer la chaîne complète de mocks
+        mock_query = Mock()
+        mock_query.filter.return_value.first.return_value = mock_quote
+        self.mock_db.query.return_value = mock_query
         self.mock_db.commit.return_value = None
         
         # Act
@@ -346,7 +375,11 @@ class TestQuoteService:
         """Test d'envoi de devis non trouvé"""
         # Arrange
         quote_id = "nonexistent-quote-id"
-        self.mock_db.query.return_value.filter.return_value.first.return_value = None
+        
+        # Configurer la chaîne complète de mocks
+        mock_query = Mock()
+        mock_query.filter.return_value.first.return_value = None
+        self.mock_db.query.return_value = mock_query
         
         # Act & Assert
         with pytest.raises(NotFoundException):
@@ -360,7 +393,10 @@ class TestQuoteService:
         mock_quote.id = quote_id
         mock_quote.status = "sent"  # Déjà envoyé
         
-        self.mock_db.query.return_value.filter.return_value.first.return_value = mock_quote
+        # Configurer la chaîne complète de mocks
+        mock_query = Mock()
+        mock_query.filter.return_value.first.return_value = mock_quote
+        self.mock_db.query.return_value = mock_query
         
         # Act & Assert
         with pytest.raises(BusinessLogicException):
@@ -376,7 +412,10 @@ class TestQuoteService:
         mock_quote.user_id = "test-user-id"
         mock_quote.items = [Mock(barrel_id="barrel1", quantity=2, unit_price=Decimal("1400.00"))]
         
-        self.mock_db.query.return_value.filter.return_value.first.return_value = mock_quote
+        # Configurer la chaîne complète de mocks
+        mock_query = Mock()
+        mock_query.filter.return_value.first.return_value = mock_quote
+        self.mock_db.query.return_value = mock_query
         self.mock_db.commit.return_value = None
         
         # Mock de la création de commande
@@ -396,7 +435,11 @@ class TestQuoteService:
         """Test de conversion de devis non trouvé"""
         # Arrange
         quote_id = "nonexistent-quote-id"
-        self.mock_db.query.return_value.filter.return_value.first.return_value = None
+        
+        # Configurer la chaîne complète de mocks
+        mock_query = Mock()
+        mock_query.filter.return_value.first.return_value = None
+        self.mock_db.query.return_value = mock_query
         
         # Act & Assert
         with pytest.raises(NotFoundException):
@@ -410,7 +453,10 @@ class TestQuoteService:
         mock_quote.id = quote_id
         mock_quote.status = "draft"  # Pas encore accepté
         
-        self.mock_db.query.return_value.filter.return_value.first.return_value = mock_quote
+        # Configurer la chaîne complète de mocks
+        mock_query = Mock()
+        mock_query.filter.return_value.first.return_value = mock_quote
+        self.mock_db.query.return_value = mock_query
         
         # Act & Assert
         with pytest.raises(BusinessLogicException):
@@ -424,7 +470,10 @@ class TestQuoteService:
         mock_quote.id = quote_id
         mock_quote.status = "draft"
         
-        self.mock_db.query.return_value.filter.return_value.first.return_value = mock_quote
+        # Configurer la chaîne complète de mocks
+        mock_query = Mock()
+        mock_query.filter.return_value.first.return_value = mock_quote
+        self.mock_db.query.return_value = mock_query
         self.mock_db.delete.return_value = None
         self.mock_db.commit.return_value = None
         
@@ -440,7 +489,11 @@ class TestQuoteService:
         """Test de suppression de devis non trouvé"""
         # Arrange
         quote_id = "nonexistent-quote-id"
-        self.mock_db.query.return_value.filter.return_value.first.return_value = None
+        
+        # Configurer la chaîne complète de mocks
+        mock_query = Mock()
+        mock_query.filter.return_value.first.return_value = None
+        self.mock_db.query.return_value = mock_query
         
         # Act & Assert
         with pytest.raises(NotFoundException):
@@ -454,7 +507,10 @@ class TestQuoteService:
         mock_quote.id = quote_id
         mock_quote.status = "sent"  # Statut non supprimable
         
-        self.mock_db.query.return_value.filter.return_value.first.return_value = mock_quote
+        # Configurer la chaîne complète de mocks
+        mock_query = Mock()
+        mock_query.filter.return_value.first.return_value = mock_quote
+        self.mock_db.query.return_value = mock_query
         
         # Act & Assert
         with pytest.raises(BusinessLogicException):
@@ -470,19 +526,34 @@ class TestQuoteService:
             "quotes_by_status": {"draft": 20, "sent": 15, "accepted": 10, "rejected": 5}
         }
         
+        # Configurer la chaîne complète de mocks pour les statistiques
         mock_query = Mock()
         mock_query.count.return_value = 50
         mock_query.with_entities.return_value.scalar.return_value = Decimal("75000.00")
         
-        self.mock_db.query.return_value = mock_query
+        # Mock pour les statistiques par statut
+        mock_status_query = Mock()
+        mock_status_query.group_by.return_value.all.return_value = [
+            ("draft", 20), ("sent", 15), ("accepted", 10), ("rejected", 5)
+        ]
+        
+        # Mock pour les statistiques mensuelles
+        mock_monthly_query = Mock()
+        mock_monthly_query.group_by.return_value.order_by.return_value.all.return_value = [
+            (datetime(2024, 1, 1), 10), (datetime(2024, 2, 1), 15)
+        ]
+        
+        # Configurer les différents appels à query
+        self.mock_db.query.side_effect = [mock_query, mock_status_query, mock_monthly_query]
         
         # Act
         result = self.quote_service.get_quote_statistics()
         
         # Assert
-        # Note: Cette méthode n'existe pas encore dans le service
-        # Ici on teste juste que la méthode ne plante pas
-        assert True  # Placeholder
+        assert result["total_quotes"] == 50
+        assert result["total_value"] == 75000.0  # Converti en float
+        assert "quotes_by_status" in result
+        assert "monthly_quotes" in result
 
     def test_search_quotes_success(self):
         """Test de recherche de devis réussie"""
@@ -490,6 +561,7 @@ class TestQuoteService:
         search_term = "QUO-001"
         mock_quotes = [Mock(spec=Quote)]
         
+        # Configurer la chaîne complète de mocks
         mock_query = Mock()
         mock_query.filter.return_value.offset.return_value.limit.return_value.all.return_value = mock_quotes
         
@@ -505,8 +577,9 @@ class TestQuoteService:
     def test_get_quote_count_with_filters(self):
         """Test de comptage de devis avec filtres"""
         # Arrange
+        # Configurer la chaîne complète de mocks
         mock_query = Mock()
-        mock_query.count.return_value = 15
+        mock_query.filter.return_value.count.return_value = 15
         
         self.mock_db.query.return_value = mock_query
         
@@ -519,6 +592,7 @@ class TestQuoteService:
     def test_get_quote_count_no_filters(self):
         """Test de comptage de devis sans filtres"""
         # Arrange
+        # Configurer la chaîne complète de mocks
         mock_query = Mock()
         mock_query.count.return_value = 50
         
@@ -536,6 +610,7 @@ class TestQuoteService:
         user_id = "test-user-id"
         mock_quotes = [Mock(spec=Quote), Mock(spec=Quote)]
         
+        # Configurer la chaîne complète de mocks
         mock_query = Mock()
         mock_query.filter.return_value.all.return_value = mock_quotes
         
@@ -554,6 +629,7 @@ class TestQuoteService:
         status = "draft"
         mock_quotes = [Mock(spec=Quote)]
         
+        # Configurer la chaîne complète de mocks
         mock_query = Mock()
         mock_query.filter.return_value.all.return_value = mock_quotes
         
@@ -604,7 +680,7 @@ class TestQuoteService:
         # Arrange
         quote_data = {
             "user_id": "test-user-id",
-            "title": "Devis de test",
+            "quote_number": "QUO-TEST-001",
             "valid_until": date.today() + timedelta(days=30),
             "items": [
                 {
@@ -616,9 +692,7 @@ class TestQuoteService:
         }
         
         # Act
-        # La validation se fait au niveau des schémas Pydantic
-        # Ici on teste juste que la méthode ne plante pas
-        result = True  # Simuler une validation réussie
+        result = self.quote_service.validate_quote_data(quote_data)
         
         # Assert
         assert result is True
@@ -649,9 +723,13 @@ class TestQuoteService:
             ]
         }
         
-        # Act & Assert
-        with pytest.raises(ValidationException):
-            self.quote_service.create_quote(quote_data)
+        # Mock de la validation des items pour éviter l'erreur de stock
+        with patch.object(self.quote_service, '_validate_quote_items') as mock_validate:
+            mock_validate.return_value = True
+            
+            # Act & Assert
+            with pytest.raises(ValidationException):
+                self.quote_service.create_quote(quote_data)
 
     def test_quote_status_transitions_valid(self):
         """Test des transitions de statut de devis valides"""
@@ -674,17 +752,13 @@ class TestQuoteService:
     def test_quote_status_transitions_invalid(self):
         """Test des transitions de statut de devis invalides"""
         # Arrange
-        invalid_transitions = [
-            ("draft", "accepted"),  # Impossible d'accepter un brouillon
-            ("sent", "converted"),  # Impossible de convertir sans accepter
-            ("rejected", "accepted"),  # Impossible de réaccepter un rejeté
-            ("expired", "sent"),  # Impossible de renvoyer un expiré
-        ]
+        invalid_transitions = self.quote_service.quote_status_transitions_invalid()
         
         # Act & Assert
-        for current_status, next_status in invalid_transitions.items():
-            # Ces transitions doivent être invalides
-            assert True  # Placeholder pour la logique de validation
+        for current_status, invalid_next_statuses in invalid_transitions.items():
+            # Vérifier que les transitions invalides sont bien définies
+            assert isinstance(invalid_next_statuses, list)
+            assert len(invalid_next_statuses) > 0
 
     def test_quote_expiry_validation(self):
         """Test de validation de l'expiration des devis"""
@@ -714,17 +788,17 @@ class TestQuoteService:
         # Arrange
         test_cases = [
             {
-                "items": [Mock(quantity=1, unit_price=Decimal("1000.00"))],
-                "shipping": Decimal("0.00"),
-                "tax": Decimal("0.00"),
-                "discount": Decimal("0.00"),
+                "items": [{"quantity": 1, "unit_price": Decimal("1000.00")}],
+                "shipping_cost": Decimal("0.00"),
+                "tax_percentage": Decimal("0.00"),
+                "discount_percentage": Decimal("0.00"),
                 "expected_total": Decimal("1000.00")
             },
             {
-                "items": [Mock(quantity=2, unit_price=Decimal("500.00"))],
-                "shipping": Decimal("25.00"),
-                "tax": Decimal("10.00"),
-                "discount": Decimal("5.00"),
+                "items": [{"quantity": 2, "unit_price": Decimal("500.00")}],
+                "shipping_cost": Decimal("25.00"),
+                "tax_percentage": Decimal("10.00"),
+                "discount_percentage": Decimal("5.00"),
                 "expected_total": Decimal("1047.50")  # 1000 - 50 + 100 + 25
             }
         ]
@@ -733,9 +807,9 @@ class TestQuoteService:
         for test_case in test_cases:
             result = self.quote_service._calculate_quote_amounts(
                 test_case["items"],
-                test_case["shipping"],
-                test_case["tax"],
-                test_case["discount"]
+                test_case["shipping_cost"],
+                test_case["discount_percentage"],
+                test_case["tax_percentage"]
             )
             
-            assert result["total_amount"] == test_case["expected_total"]
+            assert result["total"] == test_case["expected_total"]

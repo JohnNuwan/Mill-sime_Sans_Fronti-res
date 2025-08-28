@@ -43,8 +43,8 @@ class TestOrderService:
         """Test de calcul des montants de commande"""
         # Arrange
         items = [
-            Mock(quantity=2, unit_price=Decimal("1500.00")),
-            Mock(quantity=1, unit_price=Decimal("2000.00"))
+            {"quantity": 2, "unit_price": Decimal("1500.00")},
+            {"quantity": 1, "unit_price": Decimal("2000.00")}
         ]
         shipping_cost = Decimal("50.00")
         tax_rate = Decimal("20.00")
@@ -52,50 +52,48 @@ class TestOrderService:
         
         # Act
         result = self.order_service._calculate_order_amounts(
-            items, shipping_cost, tax_rate, discount_percentage
+            items, shipping_cost, discount_percentage, tax_rate
         )
         
         # Assert
         assert result["subtotal"] == Decimal("5000.00")  # 2*1500 + 1*2000
         assert result["discount_amount"] == Decimal("250.00")  # 5% de 5000
         assert result["tax_amount"] == Decimal("950.00")  # 20% de (5000-250)
-        assert result["total_amount"] == Decimal("5750.00")  # 5000-250+950+50
+        assert result["total"] == Decimal("5750.00")  # 5000-250+950+50
 
     def test_calculate_order_amounts_no_discount(self):
         """Test de calcul des montants sans remise"""
         # Arrange
-        items = [Mock(quantity=1, unit_price=Decimal("1000.00"))]
+        items = [{"quantity": 1, "unit_price": Decimal("1000.00")}]
         shipping_cost = Decimal("0.00")
-        tax_rate = Decimal("0.00")
         discount_percentage = Decimal("0.00")
+        tax_percentage = Decimal("0.00")
         
         # Act
         result = self.order_service._calculate_order_amounts(
-            items, shipping_cost, tax_rate, discount_percentage
+            items, shipping_cost, discount_percentage, tax_percentage
         )
         
         # Assert
         assert result["subtotal"] == Decimal("1000.00")
         assert result["discount_amount"] == Decimal("0.00")
         assert result["tax_amount"] == Decimal("0.00")
-        assert result["total_amount"] == Decimal("1000.00")
+        assert result["total"] == Decimal("1000.00")
 
     def test_validate_stock_availability_success(self):
         """Test de validation de disponibilité du stock réussie"""
         # Arrange
         items = [
-            Mock(barrel_id="barrel1", quantity=5),
-            Mock(barrel_id="barrel2", quantity=3)
+            {"barrel_id": "barrel1", "quantity": 5},
+            {"barrel_id": "barrel2", "quantity": 3}
         ]
         
-        mock_barrels = {
-            "barrel1": Mock(stock_quantity=10),
-            "barrel2": Mock(stock_quantity=5)
-        }
+        # Mock pour le premier appel (barrel1)
+        mock_barrel1 = Mock(stock_quantity=10)
+        # Mock pour le deuxième appel (barrel2)
+        mock_barrel2 = Mock(stock_quantity=5)
         
-        self.mock_db.query.return_value.filter.return_value.first.side_effect = lambda: mock_barrels.get(
-            self.mock_db.query.return_value.filter.return_value.first.call_args[0][0].right.value
-        )
+        self.mock_db.query.return_value.filter.return_value.first.side_effect = [mock_barrel1, mock_barrel2]
         
         # Act
         result = self.order_service._validate_stock_availability(items)
@@ -107,39 +105,39 @@ class TestOrderService:
         """Test de validation de disponibilité du stock insuffisante"""
         # Arrange
         items = [
-            Mock(barrel_id="barrel1", quantity=15)  # Plus que le stock disponible
+            {"barrel_id": "barrel1", "quantity": 15}  # Plus que le stock disponible
         ]
         
         mock_barrel = Mock(stock_quantity=10)
         self.mock_db.query.return_value.filter.return_value.first.return_value = mock_barrel
         
-        # Act & Assert
-        with pytest.raises(BusinessLogicException):
-            self.order_service._validate_stock_availability(items)
+        # Act
+        result = self.order_service._validate_stock_availability(items)
+        
+        # Assert
+        assert result is False
 
     def test_update_stock_after_order_success(self):
         """Test de mise à jour du stock après commande réussie"""
         # Arrange
         items = [
-            Mock(barrel_id="barrel1", quantity=5),
-            Mock(barrel_id="barrel2", quantity=3)
+            {"barrel_id": "barrel1", "quantity": 5},
+            {"barrel_id": "barrel2", "quantity": 3}
         ]
         
-        mock_barrels = {
-            "barrel1": Mock(stock_quantity=10),
-            "barrel2": Mock(stock_quantity=5)
-        }
+        # Mock pour le premier appel (barrel1)
+        mock_barrel1 = Mock(stock_quantity=10)
+        # Mock pour le deuxième appel (barrel2)
+        mock_barrel2 = Mock(stock_quantity=5)
         
-        self.mock_db.query.return_value.filter.return_value.first.side_effect = lambda: mock_barrels.get(
-            self.mock_db.query.return_value.filter.return_value.first.call_args[0][0].right.value
-        )
+        self.mock_db.query.return_value.filter.return_value.first.side_effect = [mock_barrel1, mock_barrel2]
         
         # Act
         self.order_service._update_stock_after_order(items)
         
         # Assert
-        assert mock_barrels["barrel1"].stock_quantity == 5  # 10 - 5
-        assert mock_barrels["barrel2"].stock_quantity == 2  # 5 - 3
+        assert mock_barrel1.stock_quantity == 5  # 10 - 5
+        assert mock_barrel2.stock_quantity == 2  # 5 - 3
 
     def test_get_order_by_id_success(self):
         """Test de récupération de commande par ID réussie"""
@@ -148,7 +146,10 @@ class TestOrderService:
         mock_order = Mock(spec=Order)
         mock_order.id = order_id
         
-        self.mock_db.query.return_value.filter.return_value.first.return_value = mock_order
+        # Configurer la chaîne complète de mocks
+        mock_query = Mock()
+        mock_query.options.return_value.filter.return_value.first.return_value = mock_order
+        self.mock_db.query.return_value = mock_query
         
         # Act
         result = self.order_service.get_order_by_id(order_id)
@@ -161,7 +162,11 @@ class TestOrderService:
         """Test de récupération de commande par ID non trouvée"""
         # Arrange
         order_id = "nonexistent-order-id"
-        self.mock_db.query.return_value.filter.return_value.first.return_value = None
+        
+        # Configurer la chaîne complète de mocks
+        mock_query = Mock()
+        mock_query.options.return_value.filter.return_value.first.return_value = None
+        self.mock_db.query.return_value = mock_query
         
         # Act & Assert
         with pytest.raises(NotFoundException):
@@ -171,8 +176,10 @@ class TestOrderService:
         """Test de récupération de commandes avec filtres"""
         # Arrange
         mock_orders = [Mock(spec=Order), Mock(spec=Order)]
+        
+        # Configurer la chaîne complète de mocks
         mock_query = Mock()
-        mock_query.offset.return_value.limit.return_value.all.return_value = mock_orders
+        mock_query.options.return_value.filter.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = mock_orders
         mock_query.count.return_value = 2
         
         self.mock_db.query.return_value = mock_query
@@ -188,8 +195,10 @@ class TestOrderService:
         """Test de récupération de commandes sans filtres"""
         # Arrange
         mock_orders = [Mock(spec=Order)]
+        
+        # Configurer la chaîne complète de mocks
         mock_query = Mock()
-        mock_query.offset.return_value.limit.return_value.all.return_value = mock_orders
+        mock_query.options.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = mock_orders
         mock_query.count.return_value = 1
         
         self.mock_db.query.return_value = mock_query

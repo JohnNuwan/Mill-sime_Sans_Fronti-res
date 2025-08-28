@@ -1,18 +1,45 @@
 {
   "name": "millesime-sans-frontieres-frontend",
   "version": "1.0.0",
-  "description": "Frontend Nuxt.js pour Millésime Sans Frontières",
+  "description": "Frontend Nuxt.js pour Millésime Sans Frontières - E-commerce de fûts de vin",
   "private": true,
+  "type": "module",
   "scripts": {
-    "build": "echo 'Build placeholder'",
-    "start": "echo 'Frontend placeholder - Backend ready to use'",
-    "dev": "echo 'Development mode placeholder'"
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "start": "nuxt start",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "type-check": "nuxt typecheck"
   },
   "dependencies": {
-    "nuxt": "^3.0.0"
+    "nuxt": "^3.8.0",
+    "@nuxtjs/tailwindcss": "^6.8.0",
+    "@pinia/nuxt": "^0.5.1",
+    "@vueuse/nuxt": "^10.5.0",
+    "pinia": "^2.1.7",
+    "vue": "^3.3.8",
+    "vue-router": "^4.2.5",
+    "axios": "^1.6.0",
+    "@headlessui/vue": "^1.7.16",
+    "@heroicons/vue": "^2.0.18",
+    "vee-validate": "^4.10.0",
+    "yup": "^1.3.3",
+    "dayjs": "^1.11.10"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "@nuxt/devtools": "latest",
+    "@types/node": "^20.8.0",
+    "postcss": "^8.4.31",
+    "sass": "^1.69.0",
+    "tailwindcss": "^3.3.5",
+    "typescript": "^5.2.2",
+    "vue-tsc": "^1.8.27"
+  },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   }
 }

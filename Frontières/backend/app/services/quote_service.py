@@ -5,7 +5,7 @@ Gestion des devis et de la logique métier
 
 from typing import List, Optional, Dict, Any, Union
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, func
 
@@ -31,12 +31,12 @@ class QuoteService:
         ).count()
         return f"QUO-{timestamp}-{count + 1:04d}"
 
-    def _calculate_quote_amounts(self, items: List[Dict], discount_percentage: Decimal = Decimal("0"), tax_percentage: Decimal = Decimal("20")) -> Dict[str, Decimal]:
+    def _calculate_quote_amounts(self, items: List[Dict], shipping_cost: Decimal = Decimal("0"), discount_percentage: Decimal = Decimal("0"), tax_percentage: Decimal = Decimal("20")) -> Dict[str, Decimal]:
         """Calcule les montants du devis"""
         subtotal = sum(item['quantity'] * item['unit_price'] for item in items)
         discount_amount = subtotal * (discount_percentage / Decimal("100"))
         tax_amount = (subtotal - discount_amount) * (tax_percentage / Decimal("100"))
-        total = subtotal - discount_amount + tax_amount
+        total = subtotal - discount_amount + tax_amount + shipping_cost
         
         return {
             "subtotal": subtotal,
@@ -143,8 +143,15 @@ class QuoteService:
             raise ValidationException("Articles de devis invalides")
 
         # Valider la date de validité
-        if valid_until and valid_until <= datetime.now():
-            raise ValidationException("La date de validité doit être dans le futur")
+        if valid_until:
+            # Convertir date en datetime si nécessaire pour la comparaison
+            if isinstance(valid_until, date):
+                valid_until_dt = datetime.combine(valid_until, datetime.min.time())
+            else:
+                valid_until_dt = valid_until
+            
+            if valid_until_dt <= datetime.now():
+                raise ValidationException("La date de validité doit être dans le futur")
 
         # Calculer les montants
         amounts = self._calculate_quote_amounts(items_data, discount_percentage, tax_percentage)
